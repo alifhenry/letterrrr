@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Letter ❤️</title>
+  <style>
+    :root{
+      --bg1:#FFF0F6; 
+      --bg2:#FFF7ED; 
+      --accent:#ef4060;
+      --shadow:0 10px 30px rgba(16,24,40,0.12);
+      --radius-lg:20px;
+      --card-w:420px; --card-h:560px; --spacing-mult:0.6; --tz-mult:0.5;
+      font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+    }
+
+    /* animated background gradient */
+    body{
+      margin:0;min-height:100vh;overflow-x:hidden;display:flex;align-items:center;justify-content:center;
+      background: linear-gradient(120deg,var(--bg1),var(--bg2));
+      background-size: 400% 400%;
+      animation: bgShift 18s ease-in-out infinite;
+      -webkit-font-smoothing:antialiased;
+    }
+    @keyframes bgShift{
+      0%{background-position:0% 50%}
+      50%{background-position:100% 50%}
+      100%{background-position:0% 50%}
+    }
+
+    /* soft vignette and bokeh using pseudo elements (via fixed containers) */
+    .bg-bokeh{position:fixed;inset:0;pointer-events:none;z-index:0}
+    .bokeh-dot{position:absolute;border-radius:50%;filter:blur(30px);opacity:0.12}
+
+    /* canvas hearts sits above background but behind UI */
+    canvas#heartCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
+
+    .container{position:relative;z-index:5;width:100%;max-width:980px;border-radius:var(--radius-lg);background:linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,250,250,0.98));box-shadow:var(--shadow);padding:22px;overflow:hidden}
+
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{margin:0;font-size:22px;color:var(--accent)}
+    p.lead{margin:4px 0 0;color:#6b7280;font-size:14px}
+    .controls{display:flex;gap:10px;align-items:center}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;border:none;cursor:pointer;font-weight:600;background:linear-gradient(90deg,#fb7185,#f43f5e);color:white}
+    .icon-btn{width:44px;height:44px;border-radius:12px;background:white;border:1px solid rgba(0,0,0,0.04);display:inline-grid;place-items:center;cursor:pointer}
+    .muted{background:transparent;color:#374151;border-radius:10px;padding:8px 12px}
+
+    .intro{display:flex;gap:12px;margin-top:14px;align-items:center}
+    .badge{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,#fff0f6,#fff5f7);display:grid;place-items:center;border:3px solid white}
+
+    .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:80}
+    .overlay.show{display:flex}
+    .overlay-bg{position:absolute;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px)}
+
+    .paper{width:min(880px,94%);background:linear-gradient(180deg,#fff,#fff8f9);border-radius:18px;box-shadow:0 30px 60px rgba(16,24,40,0.18);position:relative;padding:20px;z-index:90;transform:translateY(120%);transition:transform .6s cubic-bezier(.22,.9,.3,1),opacity .3s;opacity:0;display:flex;gap:14px;align-items:flex-start}
+    .paper.show{transform:translateY(0);opacity:1}
+    .photo{width:140px;height:140px;border-radius:12px;object-fit:cover;flex-shrink:0;border:4px solid white}
+    .content{flex:1}
+    .title{font-size:18px;color:var(--accent);margin:0}
+    .text{color:#374151;line-height:1.5;margin-top:10px;font-size:14px}
+
+    /* proposal buttons */
+    .proposal{margin-top:16px;display:flex;gap:12px;align-items:center;position:relative}
+    .btn-yes{background:linear-gradient(90deg,#34d399,#10b981);color:white;padding:10px 16px;border-radius:12px;border:none;cursor:pointer;font-weight:700}
+    .btn-no{background:linear-gradient(90deg,#ef4444,#f97316);color:white;padding:10px 16px;border-radius:12px;border:none;cursor:pointer;font-weight:700;position:absolute;right:0}
+
+    /* Gallery modal */
+    .gallery-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:120}
+    .gallery-modal.show{display:flex}
+    .gallery-bg{position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,0.78),rgba(0,0,0,0.9));backdrop-filter:blur(3px)}
+    .carousel-container{width:100%;max-width:1200px;height:84vh;position:relative;perspective:1300px;display:flex;align-items:center;justify-content:center}
+    .carousel-track{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.22,.9,.3,1)}
+    .card{position:absolute;left:50%;top:50%;transform-style:preserve-3d;transform-origin:center center;transition:transform .6s cubic-bezier(.22,.9,.3,1),opacity .35s;will-change:transform;cursor:pointer}
+    .card img{display:block;width:var(--card-w);height:var(--card-h);object-fit:cover;border-radius:16px;box-shadow:0 30px 60px rgba(2,6,23,0.45)}
+    .gallery-topbar{position:absolute;top:18px;left:24px;color:white;font-weight:700;z-index:130}
+    .gallery-title{font-size:20px;margin-bottom:6px}
+    .gallery-controls{position:absolute;top:18px;right:24px;display:flex;gap:10px;z-index:130}
+    .control-btn{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:white;padding:8px 12px;border-radius:999px;cursor:pointer}
+    .gallery-close{position:absolute;top:12px;left:12px;background:rgba(255,255,255,0.08);border:none;color:white;font-size:22px;padding:10px;border-radius:999px;cursor:pointer;z-index:9999;display:grid;place-items:center}
+
+    @media (max-width:900px){ .carousel-container{height:78vh;perspective:1000px} }
+    @media (max-width:700px){ .carousel-container{height:74vh;perspective:900px} }
+    @media (max-width:520px){ .carousel-container{height:70vh;perspective:700px} .gallery-close{top:8px;left:8px;padding:12px} .btn-no{right:8px} }
+    @media (max-width:520px){ .paper{padding:14px}.content{font-size:13px}.btn{padding:8px 12px} }
+
+    /* small helper so paper is reference for absolute no button placement */
+    .paper{position:relative}
+  </style>
+</head>
+<body>
+  <!-- animated bokeh dots (random positions set by JS) -->
+  <div class="bg-bokeh" aria-hidden="true"></div>
+  <!-- canvas for hearts -->
+  <canvas id="heartCanvas"></canvas>
+
+  <div class="container">
+    <header>
+      <div>
+        <h1>Hewoo i have letter for you ❤️</h1>
+        <p class="lead">For you who are always in my heart, My beauty and my cuteness.</p>
+      </div>
+      <div class="controls">
+        <button id="openBtn" class="btn">Open This</button>
+        <button id="galleryBtn" class="btn">Treasure</button>
+        <button id="musicToggle" class="icon-btn" title="Play / Pause music" aria-pressed="false">
+          <svg id="musicIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3v18l15-9L5 3z"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="intro">
+      <div class="badge"><svg width="46" height="46" viewBox="0 0 24 24"><path d="M12 21s-7-4.35-9-7.5C-0.5 9.5 5 4 12 8c7-4 12.5 1.5 9 5.5C19 16.65 12 21 12 21z" fill="#fecdd3"/></svg></div>
+      <div><p style="margin:0;font-weight:600"></p><p class="muted" style="margin-top:8px"></p></div>
+    </div>
+  </div>
+
+  <!-- Paper modal -->
+  <div id="overlay" class="overlay" aria-hidden="true">
+    <div class="overlay-bg" id="overlayBg"></div>
+    <div id="paper" class="paper" role="dialog" aria-modal="true" aria-label="Surat Cinta">
+      <div class="fold"></div>
+      <img id="photo" class="photo" src="assets/i love my bf so much _3.jpg" alt="Foto romantis" onerror="this.style.display='none'">
+      <div class="content">
+        <h2 class="title">Kepada Yang Tersayang</h2>
+        <p class="text">i love you today, tomorrow and forever. 
+                        terima kasih telah hadir di hidupku, bertemu dengan mu adalah hal yg tak pernah ku bayangkan sebelumnya. 
+                        begitu beruntungnya aku.</p>
+
+        <div class="proposal" aria-hidden="false">
+          <button id="yesBtn" class="btn-yes">Will you be my girlfriend?</button>
+          <button id="noBtn" class="btn-no">No</button>
+        </div>
+
+        <div class="paper-actions actions" style="margin-top:12px">
+          <button id="closeBtn" class="muted">Tutup</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gallery modal (responsive) -->
+  <div id="galleryModal" class="gallery-modal" aria-hidden="true">
+    <div class="gallery-bg" id="galleryBg"></div>
+    <div class="carousel-container" role="dialog" aria-modal="true" aria-label="Galeri Foto">
+      <button id="galleryClose" class="gallery-close" aria-label="Tutup Galeri">✕</button>
+      <div class="gallery-topbar" id="galleryTopbar">
+        <div class="gallery-title">Ciapaa inii</div>
+        <div id="galleryCounter">1 / 10</div>
+      </div>
+      <div class="gallery-controls">
+        <button id="autoplayToggle" class="control-btn">Autoplay: Off</button>
+      </div>
+      <div id="carouselTrack" class="carousel-track" aria-hidden="false"></div>
+    </div>
+  </div>
+
+  <audio id="audio" src="assets/H.E.R. - Best Part (Lyrics) Ft. Daniel Caesar - Unique Sound.mp3" preload="auto"></audio>
+
+  <script>
+    (function(){
+      /* ---------- Visual effects: bokeh + heart particles ---------- */
+      const bokehContainer = document.querySelector('.bg-bokeh');
+      function randomInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+      // create some gentle blurred dots
+      for(let i=0;i<10;i++){ const d = document.createElement('div'); d.className='bokeh-dot'; const size = randomInt(80,220); d.style.width = size+'px'; d.style.height = size+'px'; d.style.left = randomInt(-10,90)+'%'; d.style.top = randomInt(-10,90)+'%'; d.style.background = `radial-gradient(circle at 30% 30%, rgba(255,200,220,0.9), rgba(255,150,180,0.6), transparent 60%)`; d.style.opacity = (Math.random()*0.12+0.06).toString(); bokehContainer.appendChild(d); }
+
+      // heart particle system on canvas
+      const canvas = document.getElementById('heartCanvas');
+      const ctx = canvas.getContext('2d');
+      let hearts = [];
+      let w=0,h=0, DPR = window.devicePixelRatio || 1;
+      function resizeCanvas(){ w = window.innerWidth; h = window.innerHeight; canvas.width = Math.floor(w * DPR); canvas.height = Math.floor(h * DPR); canvas.style.width = w+'px'; canvas.style.height = h+'px'; ctx.setTransform(DPR,0,0,DPR,0,0); }
+      resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+
+      function createHeart(x,y,scale=1,vy=-1.2,life=180){
+        hearts.push({x,y,scale,vy,life,age:0,rot: (Math.random()*40-20)*Math.PI/180, drift:(Math.random()*0.6-0.3)});
+      }
+
+      function drawHeart(ctx,x,y,size,rot,alpha){ ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.scale(size/50,size/50); ctx.globalAlpha = alpha; ctx.beginPath(); ctx.moveTo(0,-20); ctx.bezierCurveTo(25,-50,70,-10,0,40); ctx.bezierCurveTo(-70,-10,-25,-50,0,-20); ctx.closePath(); ctx.fillStyle = 'rgba(255,90,120,'+alpha+')'; ctx.fill(); ctx.restore(); }
+
+      function tick(){ ctx.clearRect(0,0,w,h); for(let i=hearts.length-1;i>=0;i--){ const p = hearts[i]; p.age++; p.y += p.vy; p.x += p.drift*1.2; p.rot += 0.01*(p.drift); const progress = p.age / p.life; const alpha = Math.max(0, 1 - progress); const size = 20 * p.scale * (1 + Math.sin(progress*Math.PI)*0.35); drawHeart(ctx, p.x, p.y, size, p.rot, alpha); if(p.age > p.life || p.y < -80) hearts.splice(i,1); }
+        // keep a subtle ambient spawn
+        if(Math.random() < 0.02){ createHeart(Math.random()*w, h+20, 0.9+Math.random()*0.8, - (0.6+Math.random()*1.2), 200+Math.random()*200); }
+        requestAnimationFrame(tick);
+      }
+      tick();
+
+      // create a few on load for effect
+      for(let i=0;i<8;i++){ createHeart(Math.random()*w, Math.random()*h, 0.8+Math.random()*0.8, - (0.6+Math.random()*1.2), 200+Math.random()*200); }
+
+      // interactive hearts on click/move
+      window.addEventListener('click', (e)=>{ createHeart(e.clientX, e.clientY, 1.2, -1.6, 220); });
+      window.addEventListener('mousemove', (e)=>{ if(Math.random()<0.02) createHeart(e.clientX, e.clientY, 0.6, -0.8, 110); });
+
+      /* ---------- Core app logic (paper, music, gallery) ---------- */
+      const openBtn = document.getElementById('openBtn');
+      const overlay = document.getElementById('overlay');
+      const paper = document.getElementById('paper');
+      const overlayBg = document.getElementById('overlayBg');
+      const closeBtn = document.getElementById('closeBtn');
+      const audio = document.getElementById('audio');
+      const musicToggle = document.getElementById('musicToggle');
+      const musicIcon = document.getElementById('musicIcon');
+
+      const yesBtn = document.getElementById('yesBtn');
+      const noBtn = document.getElementById('noBtn');
+
+      const galleryBtn = document.getElementById('galleryBtn');
+      const galleryModal = document.getElementById('galleryModal');
+      const galleryBg = document.getElementById('galleryBg');
+      const carouselTrack = document.getElementById('carouselTrack');
+      const galleryClose = document.getElementById('galleryClose');
+      const galleryCounter = document.getElementById('galleryCounter');
+      const autoplayToggle = document.getElementById('autoplayToggle');
+
+      let images = [];
+      const totalImages = 10;
+      for(let i=1;i<=totalImages;i++) images.push(`assets/photo${i}.jpg`);
+
+      let current = 0; let autoplay = false; let autoplayHandle = null; let galleryOpen = false;
+
+      function computeLayoutValues(){ const root = getComputedStyle(document.documentElement); const cardW = parseFloat(root.getPropertyValue('--card-w')) || 420; const spacingMult = parseFloat(root.getPropertyValue('--spacing-mult')) || 0.6; const tzMult = parseFloat(root.getPropertyValue('--tz-mult')) || 0.5; return { cardW, spacingMult, tzMult }; }
+
+      function setMusicIcon(playing){ if(!musicIcon) return; if(playing){ musicIcon.innerHTML = `
+            <rect x="6" y="4" width="3" height="16" rx="1"></rect>
+            <rect x="14" y="4" width="3" height="16" rx="1"></rect>`; } else { musicIcon.innerHTML = '<path d="M5 3v18l15-9L5 3z" />'; } }
+
+      function buildCards(){ if(!carouselTrack) return; carouselTrack.innerHTML = ''; images.forEach((src, idx)=>{ const card = document.createElement('div'); card.className = 'card'; card.dataset.index = idx; card.dataset.abs = '0'; const img = document.createElement('img'); img.src = src; img.alt = `Foto ${idx+1}`; img.loading = 'lazy'; card.appendChild(img); card.addEventListener('click', (e)=>{ e.stopPropagation(); const idxClicked = Number(card.dataset.index); if(idxClicked !== current){ current = idxClicked; arrange(); return; } nextImage(); if(autoplay) stopAutoplay(); }); carouselTrack.appendChild(card); }); }
+
+      function arrange(){ if(!carouselTrack) return; const cards = Array.from(carouselTrack.children); const { cardW, spacingMult, tzMult } = computeLayoutValues(); const spacing = cardW * spacingMult; cards.forEach((card)=>{ const idx = Number(card.dataset.index); let offset = idx - current; if(offset > images.length/2) offset -= images.length; if(offset < -images.length/2) offset += images.length; const abs = Math.abs(offset); const tx = offset * spacing; const tz = -Math.min(abs * cardW * tzMult, cardW * 1.2); const ry = offset * -12; const scale = Math.max(0.7, 1 - abs * 0.06); card.style.transform = `translateX(${tx}px) translateY(-50%) translateZ(${tz}px) rotateY(${ry}deg) scale(${scale})`; card.style.zIndex = Math.max(0, 200 - Math.round(abs*10)); card.dataset.abs = Math.round(abs); card.style.opacity = abs > 6 ? '0' : '1'; }); if(galleryCounter) galleryCounter.textContent = `${current+1} / ${images.length}`; }
+
+      function nextImage(){ current = (current + 1) % images.length; arrange(); }
+      function prevImage(){ current = (current - 1 + images.length) % images.length; arrange(); }
+
+      function openGallery(){ if(!galleryModal) return; galleryOpen = true; buildCards(); arrange(); galleryModal.classList.add('show'); galleryModal.setAttribute('aria-hidden','false'); // play audio when gallery opens
+        if(audio){ audio.currentTime = 0; audio.play().then(()=>{ if(musicToggle) musicToggle.setAttribute('aria-pressed','true'); setMusicIcon(true); }).catch((e)=>{ console.warn('audio play prevented when opening gallery', e); }); } if(autoplay) startAutoplay(); }
+
+      function closeGallery(){ if(!galleryModal) return; galleryOpen = false; galleryModal.classList.remove('show'); galleryModal.setAttribute('aria-hidden','true'); stopAutoplay(); }
+
+      function startAutoplay(){ stopAutoplay(); autoplayHandle = setInterval(()=>{ nextImage(); }, 2500); autoplay = true; if(autoplayToggle) autoplayToggle.textContent = 'Autoplay: On'; }
+      function stopAutoplay(){ if(autoplayHandle) clearInterval(autoplayHandle); autoplayHandle = null; autoplay = false; if(autoplayToggle) autoplayToggle.textContent = 'Autoplay: Off'; }
+
+      // touch / swipe
+      let touchStartX = 0; let touchCurrentX = 0; let isTouching = false; let touchThreshold = 40;
+      function onTouchStart(e){ if(!e.touches || e.touches.length===0) return; isTouching = true; touchStartX = e.touches[0].clientX; }
+      function onTouchMove(e){ if(!isTouching || !e.touches || e.touches.length===0) return; touchCurrentX = e.touches[0].clientX; }
+      function onTouchEnd(e){ if(!isTouching) return; const dx = touchCurrentX - touchStartX; isTouching = false; touchStartX = touchCurrentX = 0; if(Math.abs(dx) < touchThreshold) return; if(dx < 0) { nextImage(); } else { prevImage(); } if(autoplay) stopAutoplay(); }
+
+      // event bindings — defensive checks
+      if(openBtn) openBtn.addEventListener('click', ()=>{ if(overlay && paper){ overlay.classList.add('show'); setTimeout(()=>paper.classList.add('show'),50); overlay.setAttribute('aria-hidden','false'); if(audio){ audio.currentTime = 0; audio.play().then(()=>{ if(musicToggle) musicToggle.setAttribute('aria-pressed','true'); setMusicIcon(true); }).catch((e)=>{ console.warn('audio play prevented when opening paper', e); setMusicIcon(false); }); } } });
+
+      if(closeBtn) closeBtn.addEventListener('click', ()=>{ if(paper && overlay){ paper.classList.remove('show'); overlay.setAttribute('aria-hidden','true'); setTimeout(()=>overlay.classList.remove('show'),300); if(audio){ audio.pause(); audio.currentTime = 0; } if(musicToggle) musicToggle.setAttribute('aria-pressed','false'); setMusicIcon(false); } });
+      if(overlayBg) overlayBg.addEventListener('click', ()=>{ if(paper){ paper.classList.remove('show'); overlay.setAttribute('aria-hidden','true'); setTimeout(()=>overlay.classList.remove('show'),300); if(audio){ audio.pause(); audio.currentTime = 0; } if(musicToggle) musicToggle.setAttribute('aria-pressed','false'); setMusicIcon(false); } });
+
+      if(musicToggle) musicToggle.addEventListener('click', ()=>{ if(!audio) return; if(audio.paused){ audio.play().then(()=>{ if(musicToggle) musicToggle.setAttribute('aria-pressed','true'); setMusicIcon(true); }).catch(()=>{}); } else { audio.pause(); if(musicToggle) musicToggle.setAttribute('aria-pressed','false'); setMusicIcon(false); } });
+
+      if(galleryBtn) galleryBtn.addEventListener('click', ()=>{ openGallery(); });
+      if(galleryClose) galleryClose.addEventListener('click', (ev)=>{ ev.stopPropagation(); closeGallery(); });
+      if(galleryBg) { galleryBg.addEventListener('click', ()=>{ closeGallery(); }); galleryBg.addEventListener('touchend', ()=>{ closeGallery(); }, {passive:true}); }
+
+      if(autoplayToggle) autoplayToggle.addEventListener('click', ()=>{ if(autoplay) stopAutoplay(); else startAutoplay(); });
+
+      document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape'){ if(galleryOpen) closeGallery(); else if(overlay && overlay.classList.contains('show')){ paper.classList.remove('show'); overlay.setAttribute('aria-hidden','true'); setTimeout(()=>overlay.classList.remove('show'),300); if(audio){ audio.pause(); audio.currentTime = 0; } if(musicToggle) musicToggle.setAttribute('aria-pressed','false'); setMusicIcon(false); } } if(e.key === 'ArrowRight'){ nextImage(); if(autoplay) stopAutoplay(); } if(e.key === 'ArrowLeft'){ prevImage(); if(autoplay) stopAutoplay(); } });
+
+      const carouselContainer = document.querySelector('.carousel-container'); if(carouselContainer){ carouselContainer.addEventListener('touchstart', onTouchStart, {passive:true}); carouselContainer.addEventListener('touchmove', onTouchMove, {passive:true}); carouselContainer.addEventListener('touchend', onTouchEnd, {passive:true}); }
+
+      // No button dodge behaviour (improved: relative to paper width/height and keeps within bounds)
+      function dodgeNoButton(){ if(!noBtn || !paper) return; const paperRect = paper.getBoundingClientRect(); const btnRect = noBtn.getBoundingClientRect(); const padding = 12; const maxX = Math.max(8, paperRect.width - btnRect.width - padding); const maxY = Math.max(8, paperRect.height - btnRect.height - padding); const randX = Math.floor(Math.random() * maxX); const randY = Math.floor(Math.random() * maxY); noBtn.style.position = 'absolute'; noBtn.style.left = randX + 'px'; noBtn.style.top = randY + 'px'; }
+      if(noBtn){ noBtn.addEventListener('mouseover', dodgeNoButton); noBtn.addEventListener('mouseenter', dodgeNoButton); noBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); dodgeNoButton(); }, {passive:false}); }
+
+      // Yes button navigates to acceptance page
+      if(yesBtn){ yesBtn.addEventListener('click', ()=>{ window.location.href = 'Hewoo.html'; }); }
+
+      // init gallery + UI
+      if(autoplayToggle) autoplayToggle.textContent = 'Autoplay: Off'; setMusicIcon(false); buildCards(); arrange();
+
+      // helpful: ensure close gallery is reachable by keyboard focus
+      if(galleryClose) galleryClose.tabIndex = 0;
+
+    })();
+  </script>
+</body>
+</html>
